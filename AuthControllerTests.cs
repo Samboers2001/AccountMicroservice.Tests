@@ -15,22 +15,17 @@ public class AuthControllerTests
 
     public AuthControllerTests()
     {
-        // Mock UserManager
         _userManagerMock = new Mock<UserManager<IdentityUser>>(Mock.Of<IUserStore<IdentityUser>>(), null, null, null, null, null, null, null, null);
 
-        // Mock RoleManager
         _roleManagerMock = new Mock<RoleManager<IdentityRole>>(Mock.Of<IRoleStore<IdentityRole>>(), null, null, null, null);
 
-        // Mock IConfiguration
         _configurationMock = new Mock<IConfiguration>();
         _configurationMock.Setup(c => c["JWTAuth:SecretKey"]).Returns("YourSecretKeyHere");
         _configurationMock.Setup(c => c["JWTAuth:ValidIssuerURL"]).Returns("YourIssuerURLHere");
         _configurationMock.Setup(c => c["JWTAuth:ValidAudienceURL"]).Returns("YourAudienceURLHere");
 
-        // Mock IMessageBusClient
         _messageBusClientMock = new Mock<IMessageBusClient>();
 
-        // Initialize the controller with the mocked dependencies
         _controller = new AuthController(_userManagerMock.Object, _roleManagerMock.Object, _configurationMock.Object, _messageBusClientMock.Object);
     }
 
@@ -53,5 +48,72 @@ public class AuthControllerTests
         var okResult = Assert.IsType<OkObjectResult>(result);
         Assert.NotNull(okResult.Value);
 
+        var tokenString = okResult.Value.ToString();
+        Assert.NotNull(tokenString);
+        Assert.NotEmpty(tokenString);
     }
+
+    [Fact]
+    public async Task Register_ValidModel_ReturnsSuccess()
+    {
+        // Arrange
+        var registerModel = new Register
+        {
+            Username = "newuser",
+            Email = "newuser@example.com",
+            Password = "Password123"
+        };
+
+        _userManagerMock.Setup(um => um.FindByNameAsync(registerModel.Username)).ReturnsAsync((IdentityUser)null); // User does not exist
+        _userManagerMock.Setup(um => um.CreateAsync(It.IsAny<IdentityUser>(), registerModel.Password))
+                        .ReturnsAsync(IdentityResult.Success);
+
+        // Act
+        var result = await _controller.Register(registerModel);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<Response>(okResult.Value);
+        Assert.NotNull(response);
+        Assert.Equal("Success", response.Status);
+        Assert.Equal("User created successfully!", response.Message);
+    }
+
+    [Fact]
+    public async Task RegisterAdmin_ValidModel_ReturnsSuccess()
+    {
+        // Arrange
+        var registerModel = new Register
+        {
+            Username = "newadmin",
+            Email = "newadmin@example.com",
+            Password = "Password123" 
+        };
+
+        _userManagerMock.Setup(um => um.FindByNameAsync(registerModel.Username)).ReturnsAsync((IdentityUser)null); // User does not exist
+        _userManagerMock.Setup(um => um.CreateAsync(It.IsAny<IdentityUser>(), registerModel.Password))
+                        .ReturnsAsync(IdentityResult.Success);
+
+
+        // Act
+        var result = await _controller.RegisterAdmin(registerModel);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<Response>(okResult.Value);
+        Assert.NotNull(response);
+        Assert.Equal("Success", response.Status);
+        Assert.Equal("User created successfully!", response.Message);
+    }
+
+
+
+
+
+
+
+
+
+
+
 }
